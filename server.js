@@ -11,7 +11,7 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null
 const milestones = [100, 250, 500, 1000]
-const supportedCurrencies = ['usd', 'eur', 'gbp', 'aud', 'cad']
+const supportedCurrencies = ['usd', 'eur', 'gbp', 'aud', 'cad', 'cny']
 const defaultDataDirectory = resolve('data')
 const configuredDataDirectory = process.env.DATA_DIR
 let dataDirectory = resolve(configuredDataDirectory || defaultDataDirectory)
@@ -145,7 +145,8 @@ app.use(express.json())
 app.use(express.static('public'))
 
 app.get('/api/campaign', (request, response) => {
-  const currency = normalizeCurrency(request.query.currency) || supportedCurrencies[0]
+  const currency =
+    normalizeCurrency(request.query.currency) || supportedCurrencies[0]
   response.json(campaignSnapshot(currency))
 })
 
@@ -171,7 +172,7 @@ app.post('/api/create-checkout-session', async (request, response) => {
   ) {
     return response
       .status(400)
-        .json({ error: 'Choose an amount between 1 and 1,000.' })
+      .json({ error: 'Choose an amount between 1 and 1,000.' })
   }
 
   const baseUrl =
