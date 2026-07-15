@@ -12,6 +12,33 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null
 const milestones = [100, 250, 500, 1000]
 const supportedCurrencies = ['usd', 'eur', 'gbp', 'aud', 'cad', 'cny']
+const countryToCurrency = {
+  US: 'usd',
+  AU: 'aud',
+  CA: 'cad',
+  CN: 'cny',
+  GB: 'gbp',
+  IE: 'eur',
+  DE: 'eur',
+  FR: 'eur',
+  IT: 'eur',
+  ES: 'eur',
+  NL: 'eur',
+  BE: 'eur',
+  AT: 'eur',
+  PT: 'eur',
+  FI: 'eur',
+  GR: 'eur',
+  LU: 'eur',
+  LT: 'eur',
+  LV: 'eur',
+  EE: 'eur',
+  SK: 'eur',
+  SI: 'eur',
+  CY: 'eur',
+  MT: 'eur',
+  HR: 'eur',
+}
 const defaultDataDirectory = resolve('data')
 const configuredDataDirectory = process.env.DATA_DIR
 let dataDirectory = resolve(configuredDataDirectory || defaultDataDirectory)
@@ -61,6 +88,12 @@ function normalizeCurrency(value) {
   if (typeof currency !== 'string') return null
   const normalized = currency.trim().toLowerCase()
   return supportedCurrencies.includes(normalized) ? normalized : null
+}
+
+function currencyFromCountryCode(countryCode) {
+  if (!countryCode || typeof countryCode !== 'string') return null
+  const mapped = countryToCurrency[countryCode.trim().toUpperCase()]
+  return normalizeCurrency(mapped)
 }
 
 function campaignSnapshot(currency) {
@@ -143,6 +176,47 @@ app.post(
 
 app.use(express.json())
 app.use(express.static('public'))
+
+app.get('/api/detect-currency', async (request, response) => {
+  const headerCountryCandidates = [
+    request.headers['cf-ipcountry'],
+    request.headers['x-country-code'],
+    request.headers['x-vercel-ip-country'],
+    request.headers['x-appengine-country'],
+  ]
+
+  for (const candidate of headerCountryCandidates) {
+    const detected = currencyFromCountryCode(candidate)
+    if (detected) {
+      return response.json({ currency: detected, source: 'edge-header' })
+    }
+  }
+
+  const forwardedFor = Array.isArray(request.headers['x-forwarded-for'])
+    ? request.headers['x-forwarded-for'][0]
+    : request.headers['x-forwarded-for']
+  const visitorIp = forwardedFor?.split(',')[0]?.trim()
+
+  if (visitorIp) {
+    try {
+      const geoResponse = await fetch(
+        `https://ipapi.co/${encodeURIComponent(visitorIp)}/json/`,
+        { cache: 'no-store' },
+      )
+      if (geoResponse.ok) {
+        const payload = await geoResponse.json()
+        const detected = currencyFromCountryCode(payload?.country_code)
+        if (detected) {
+          return response.json({ currency: detected, source: 'ipapi' })
+        }
+      }
+    } catch {
+      // Ignore lookup errors and fall through to default.
+    }
+  }
+
+  return response.json({ currency: supportedCurrencies[0], source: 'default' })
+})
 
 app.get('/api/campaign', (request, response) => {
   const currency =
