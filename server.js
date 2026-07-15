@@ -11,7 +11,54 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null
 const milestones = [100, 250, 500, 1000]
-const supportedCurrencies = ['usd', 'eur', 'gbp', 'aud', 'cad', 'cny']
+const supportedCurrencies = [
+  'usd',
+  'eur',
+  'gbp',
+  'aud',
+  'cad',
+  'cny',
+  'jpy',
+  'inr',
+  'chf',
+  'sgd',
+  'hkd',
+  'nzd',
+  'brl',
+  'mxn',
+]
+const currencyExponent = {
+  usd: 2,
+  eur: 2,
+  gbp: 2,
+  aud: 2,
+  cad: 2,
+  cny: 2,
+  jpy: 0,
+  inr: 2,
+  chf: 2,
+  sgd: 2,
+  hkd: 2,
+  nzd: 2,
+  brl: 2,
+  mxn: 2,
+}
+const minimumChargeMinorUnits = {
+  usd: 50,
+  eur: 50,
+  gbp: 30,
+  aud: 50,
+  cad: 50,
+  cny: 200,
+  jpy: 50,
+  inr: 50,
+  chf: 50,
+  sgd: 50,
+  hkd: 4,
+  nzd: 50,
+  brl: 50,
+  mxn: 10,
+}
 const countryToCurrency = {
   US: 'usd',
   AU: 'aud',
@@ -38,6 +85,14 @@ const countryToCurrency = {
   CY: 'eur',
   MT: 'eur',
   HR: 'eur',
+  JP: 'jpy',
+  IN: 'inr',
+  BR: 'brl',
+  MX: 'mxn',
+  CH: 'chf',
+  SG: 'sgd',
+  HK: 'hkd',
+  NZ: 'nzd',
 }
 const defaultDataDirectory = resolve('data')
 const configuredDataDirectory = process.env.DATA_DIR
@@ -251,15 +306,21 @@ app.post('/api/create-checkout-session', async (request, response) => {
     })
   }
 
-  const amountInCents = Math.round(Number(request.body.amount) * 100)
+  const amountInMinorUnits = Math.round(
+    Number(request.body.amount) * 10 ** currencyExponent[selectedCurrency],
+  )
+  const minimumAmountMinorUnits = minimumChargeMinorUnits[selectedCurrency]
+  const maximumAmountMinorUnits = 1000 * 10 ** currencyExponent[selectedCurrency]
   if (
-    !Number.isSafeInteger(amountInCents) ||
-    amountInCents < 100 ||
-    amountInCents > 100000
+    !Number.isSafeInteger(amountInMinorUnits) ||
+    amountInMinorUnits < minimumAmountMinorUnits ||
+    amountInMinorUnits > maximumAmountMinorUnits
   ) {
     return response
       .status(400)
-      .json({ error: 'Choose an amount between 1 and 1,000.' })
+      .json({
+        error: `Choose an amount between ${(minimumAmountMinorUnits / 10 ** currencyExponent[selectedCurrency]).toFixed(currencyExponent[selectedCurrency])} and 1,000 ${selectedCurrency.toUpperCase()}.`,
+      })
   }
 
   const donationMessage =
@@ -289,7 +350,7 @@ app.post('/api/create-checkout-session', async (request, response) => {
           price_data: {
             currency: selectedCurrency,
             product_data: { name: 'Keep Her Indoors contribution' },
-            unit_amount: amountInCents,
+            unit_amount: amountInMinorUnits,
           },
           quantity: 1,
         },

@@ -14,6 +14,39 @@ const leaderboardElement = document.querySelector('[data-leaderboard]')
 
 let selectedAmount = 5
 let selectedCurrency = currencySelect?.value || 'usd'
+const currencyExponent = {
+  usd: 2,
+  eur: 2,
+  gbp: 2,
+  aud: 2,
+  cad: 2,
+  cny: 2,
+  jpy: 0,
+  inr: 2,
+  chf: 2,
+  sgd: 2,
+  hkd: 2,
+  nzd: 2,
+  brl: 2,
+  mxn: 2,
+}
+const currencyScale = (currencyCode) => 10 ** currencyExponent[currencyCode]
+const minimumDonationAmounts = {
+  usd: 0.5,
+  eur: 0.5,
+  gbp: 0.3,
+  aud: 0.5,
+  cad: 0.5,
+  cny: 2,
+  jpy: 50,
+  inr: 0.5,
+  chf: 0.5,
+  sgd: 0.5,
+  hkd: 0.04,
+  nzd: 0.5,
+  brl: 0.5,
+  mxn: 0.1,
+}
 const availableCurrencies = new Set(
   Array.from(currencySelect?.options || []).map((option) => option.value),
 )
@@ -88,7 +121,7 @@ function makeCurrencyFormatter(currencyCode) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currencyCode.toUpperCase(),
-    maximumFractionDigits: 0,
+    maximumFractionDigits: currencyExponent[currencyCode],
   })
 }
 
@@ -117,17 +150,26 @@ function updateCurrencyUI() {
   if (currencySymbol) {
     currencySymbol.textContent = currencySymbolFor(selectedCurrency)
   }
+  if (amountInput) {
+    amountInput.min = minimumDonationAmounts[selectedCurrency]
+    amountInput.step = 1 / currencyScale(selectedCurrency)
+  }
+  amountButtons.forEach((button) => {
+    button.textContent = currency.format(Number(button.dataset.amount))
+  })
 }
 
 let currency = makeCurrencyFormatter(selectedCurrency)
 
-function animateTotal(targetCents) {
+function animateTotal(targetMinorUnits) {
   const startedAt = performance.now()
   const duration = 950
   const draw = (now) => {
     const progress = Math.min((now - startedAt) / duration, 1)
     const eased = 1 - Math.pow(1 - progress, 3)
-    totalElement.textContent = currency.format((targetCents * eased) / 100)
+    totalElement.textContent = currency.format(
+      (targetMinorUnits * eased) / currencyScale(selectedCurrency),
+    )
     if (progress < 1) requestAnimationFrame(draw)
   }
   requestAnimationFrame(draw)
@@ -139,7 +181,7 @@ function renderCampaign(campaign) {
     currency = makeCurrencyFormatter(selectedCurrency)
   }
 
-  const totalDollars = campaign.totalCents / 100
+  const totalDollars = campaign.totalCents / currencyScale(selectedCurrency)
   const goal = campaign.milestones[campaign.milestones.length - 1]
   const achieved = campaign.milestones.filter(
     (milestone) => totalDollars >= milestone,
@@ -172,7 +214,7 @@ function renderCampaign(campaign) {
     ? campaign.leaderboard
         .map(
           (supporter, index) =>
-            `<li><span class="rank">${String(index + 1).padStart(2, '0')}</span><span class="supporter-info"><span class="supporter-name">${escapeHtml(supporter.name)}</span>${supporter.message ? `<span class="supporter-message">${escapeHtml(supporter.message)}</span>` : ''}</span><strong>${currency.format(supporter.amountCents / 100)}</strong></li>`,
+            `<li><span class="rank">${String(index + 1).padStart(2, '0')}</span><span class="supporter-info"><span class="supporter-name">${escapeHtml(supporter.name)}</span>${supporter.message ? `<span class="supporter-message">${escapeHtml(supporter.message)}</span>` : ''}</span><strong>${currency.format(supporter.amountCents / currencyScale(selectedCurrency))}</strong></li>`,
         )
         .join('')
     : '<li class="empty-leaderboard">Be the first person to earn a place on the board.</li>'
