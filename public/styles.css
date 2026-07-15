@@ -108,11 +108,12 @@ em {
 }
 .hero-photo {
   width: min(420px, 100%);
-  margin: 30px 0 0;
+  margin: 12px 0 0;
   border: 1px solid var(--ink);
   background: #fffaf0;
   box-shadow: 9px 9px 0 color-mix(in srgb, var(--coral) 55%, transparent);
   animation: photo-float 6.5s ease-in-out infinite;
+  transform: translateY(-12px);
 }
 .hero-photo img {
   width: 100%;
@@ -710,8 +711,9 @@ em {
     font-size: 13px;
   }
   .hero-photo {
-    margin-top: 22px;
+    margin-top: 8px;
     box-shadow: 5px 5px 0 color-mix(in srgb, var(--coral) 45%, transparent);
+    transform: translateY(-8px);
   }
   .hero-photo img {
     max-height: 320px;
