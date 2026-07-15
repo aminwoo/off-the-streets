@@ -14,6 +14,54 @@ const leaderboardElement = document.querySelector('[data-leaderboard]')
 let selectedAmount = 20
 let selectedCurrency = currencySelect?.value || 'usd'
 
+function initEntranceAnimations() {
+  const revealTargets = [
+    '.intro',
+    '.donation-panel',
+    '.campaign .section-label',
+    '.milestone-board',
+    '.leaderboard',
+    '.impact .section-label',
+    '.impact-heading',
+    '.impact-list article',
+    '.closing .eyebrow',
+    '.closing h2',
+    '.closing p',
+    '.closing a',
+  ]
+
+  const elements = document.querySelectorAll(revealTargets.join(', '))
+  if (!elements.length) return
+
+  document.body.classList.add('has-motion')
+
+  elements.forEach((element, index) => {
+    element.classList.add('reveal-on-scroll')
+    element.style.setProperty('--reveal-delay', `${Math.min(index * 36, 360)}ms`)
+  })
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    elements.forEach((element) => element.classList.add('in-view'))
+    return
+  }
+
+  const observer = new IntersectionObserver(
+    (entries, currentObserver) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return
+        entry.target.classList.add('in-view')
+        currentObserver.unobserve(entry.target)
+      })
+    },
+    {
+      threshold: 0.16,
+      rootMargin: '0px 0px -10% 0px',
+    },
+  )
+
+  elements.forEach((element) => observer.observe(element))
+}
+
 function makeCurrencyFormatter(currencyCode) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -160,5 +208,6 @@ form.addEventListener('submit', async (event) => {
 })
 
 if (window.lucide) window.lucide.createIcons()
+initEntranceAnimations()
 updateCurrencyUI()
 loadCampaign()
