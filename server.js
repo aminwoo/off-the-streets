@@ -11,9 +11,29 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null
 const milestones = [100, 250, 500, 1000]
-const dataDirectory = resolve(process.env.DATA_DIR || 'data')
+const defaultDataDirectory = resolve('data')
+const configuredDataDirectory = process.env.DATA_DIR
+let dataDirectory = resolve(configuredDataDirectory || defaultDataDirectory)
 
-mkdirSync(dataDirectory, { recursive: true })
+try {
+  mkdirSync(dataDirectory, { recursive: true })
+} catch (error) {
+  const permissionCodes = ['EACCES', 'EPERM', 'EROFS']
+  if (
+    configuredDataDirectory &&
+    permissionCodes.includes(error?.code) &&
+    dataDirectory !== defaultDataDirectory
+  ) {
+    dataDirectory = defaultDataDirectory
+    mkdirSync(dataDirectory, { recursive: true })
+    console.warn(
+      `DATA_DIR=${configuredDataDirectory} is not writable (${error.code}); falling back to ${dataDirectory}.`,
+    )
+  } else {
+    throw error
+  }
+}
+
 const database = new DatabaseSync(resolve(dataDirectory, 'campaign.sqlite'))
 database.exec(`
   CREATE TABLE IF NOT EXISTS donations (
