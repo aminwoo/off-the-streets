@@ -1,6 +1,8 @@
 const form = document.querySelector('#donation-form')
 const amountInput = document.querySelector('#amount')
 const amountButtons = document.querySelectorAll('.amount')
+const currencySelect = document.querySelector('#currency')
+const currencySymbol = document.querySelector('#currency-symbol')
 const errorMessage = document.querySelector('#form-error')
 const totalElement = document.querySelector('[data-campaign-total]')
 const supporterCountElement = document.querySelector('[data-supporter-count]')
@@ -10,11 +12,35 @@ const milestoneCopy = document.querySelector('[data-milestone-copy]')
 const leaderboardElement = document.querySelector('[data-leaderboard]')
 
 let selectedAmount = 20
-const currency = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
+let selectedCurrency = currencySelect?.value || 'usd'
+
+function makeCurrencyFormatter(currencyCode) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode.toUpperCase(),
+    maximumFractionDigits: 0,
+  })
+}
+
+function currencySymbolFor(currencyCode) {
+  const parts = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode.toUpperCase(),
+    maximumFractionDigits: 0,
+  }).formatToParts(0)
+  return parts.find((part) => part.type === 'currency')?.value || '$'
+}
+
+function updateCurrencyUI() {
+  if (currencySelect && currencySelect.value !== selectedCurrency) {
+    currencySelect.value = selectedCurrency
+  }
+  if (currencySymbol) {
+    currencySymbol.textContent = currencySymbolFor(selectedCurrency)
+  }
+}
+
+let currency = makeCurrencyFormatter(selectedCurrency)
 
 function animateTotal(targetCents) {
   const startedAt = performance.now()
@@ -29,16 +55,18 @@ function animateTotal(targetCents) {
 }
 
 function renderCampaign(campaign) {
+  if (campaign.currency) {
+    selectedCurrency = campaign.currency
+    currency = makeCurrencyFormatter(selectedCurrency)
+  }
+
   const totalDollars = campaign.totalCents / 100
   const goal = campaign.milestones[campaign.milestones.length - 1]
   const achieved = campaign.milestones.filter(
     (milestone) => totalDollars >= milestone,
   ).length
-  const nextMilestone = campaign.milestones.find(
-    (milestone) => totalDollars < milestone,
-  )
   const milestoneMessages = [
-    'First milestone: $100 for an unreasonably calming month of noodles.',
+    `First milestone: ${currency.format(campaign.milestones[0])} for an unreasonably calming month of noodles.`,
     'Momentum acquired: essentials now look slightly less threatening.',
     'Halfway there: housing stress has been reduced by at least 12%.',
     'Target reached: her indoor status is officially well defended.',
@@ -59,6 +87,7 @@ function renderCampaign(campaign) {
   milestoneCopy.textContent =
     milestoneMessages[Math.min(achieved, milestoneMessages.length - 1)]
   document.querySelector('.milestone-board').dataset.stage = achieved
+  updateCurrencyUI()
 
   leaderboardElement.innerHTML = campaign.leaderboard.length
     ? campaign.leaderboard
@@ -72,7 +101,7 @@ function renderCampaign(campaign) {
 
 async function loadCampaign() {
   try {
-    const response = await fetch('/api/campaign')
+    const response = await fetch(`/api/campaign?currency=${selectedCurrency}`)
     if (!response.ok) throw new Error('Campaign unavailable')
     renderCampaign(await response.json())
   } catch {
@@ -95,6 +124,15 @@ amountInput.addEventListener('input', () => {
     amountButtons.forEach((option) => option.classList.remove('active'))
 })
 
+if (currencySelect) {
+  currencySelect.addEventListener('change', () => {
+    selectedCurrency = currencySelect.value
+    currency = makeCurrencyFormatter(selectedCurrency)
+    updateCurrencyUI()
+    loadCampaign()
+  })
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault()
   const amount = Number(amountInput.value || selectedAmount)
@@ -108,7 +146,7 @@ form.addEventListener('submit', async (event) => {
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, currency: selectedCurrency }),
     })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error)
@@ -122,4 +160,5 @@ form.addEventListener('submit', async (event) => {
 })
 
 if (window.lucide) window.lucide.createIcons()
+updateCurrencyUI()
 loadCampaign()

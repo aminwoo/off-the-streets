@@ -56,6 +56,16 @@
               <h2 id="donate-title">A little goes a long way.</h2>
             </div>
             <form id="donation-form">
+              <label class="currency-picker" for="currency">
+                <span>Currency</span>
+                <select id="currency" name="currency">
+                  <option value="usd" selected>USD</option>
+                  <option value="eur">EUR</option>
+                  <option value="gbp">GBP</option>
+                  <option value="aud">AUD</option>
+                  <option value="cad">CAD</option>
+                </select>
+              </label>
               <div
                 class="amount-grid"
                 role="group"
@@ -75,7 +85,7 @@
               <label class="custom-amount" for="amount">
                 <span>Or enter your own</span>
                 <span class="amount-field"
-                  ><b>$</b
+                  ><b id="currency-symbol">$</b
                   ><input
                     id="amount"
                     name="amount"

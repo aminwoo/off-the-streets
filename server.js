@@ -11,6 +11,7 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null
 const milestones = [100, 250, 500, 1000]
+const supportedCurrencies = ['usd', 'eur', 'gbp', 'aud', 'cad']
 const defaultDataDirectory = resolve('data')
 const configuredDataDirectory = process.env.DATA_DIR
 let dataDirectory = resolve(configuredDataDirectory || defaultDataDirectory)
@@ -40,29 +41,52 @@ database.exec(`
     stripe_session_id TEXT PRIMARY KEY,
     donor_name TEXT NOT NULL,
     amount_cents INTEGER NOT NULL,
+    amount_currency TEXT NOT NULL DEFAULT 'usd',
     completed_at TEXT NOT NULL
   )
 `)
 
-function campaignSnapshot() {
+try {
+  database.exec(
+    "ALTER TABLE donations ADD COLUMN amount_currency TEXT NOT NULL DEFAULT 'usd'",
+  )
+} catch (error) {
+  if (!error?.message?.includes('duplicate column name')) {
+    throw error
+  }
+}
+
+function normalizeCurrency(value) {
+  const currency = Array.isArray(value) ? value[0] : value
+  if (typeof currency !== 'string') return null
+  const normalized = currency.trim().toLowerCase()
+  return supportedCurrencies.includes(normalized) ? normalized : null
+}
+
+function campaignSnapshot(currency) {
   const totalCents = database
-    .prepare('SELECT COALESCE(SUM(amount_cents), 0) AS total FROM donations')
-    .get().total
+    .prepare(
+      'SELECT COALESCE(SUM(amount_cents), 0) AS total FROM donations WHERE amount_currency = ?',
+    )
+    .get(currency).total
   const supporters = database
-    .prepare('SELECT COUNT(*) AS count FROM donations')
-    .get().count
+    .prepare(
+      'SELECT COUNT(*) AS count FROM donations WHERE amount_currency = ?',
+    )
+    .get(currency).count
   const leaderboard = database
     .prepare(
       `
-    SELECT donor_name AS name, amount_cents AS amountCents
+    SELECT donor_name AS name, amount_cents AS amountCents, amount_currency AS currency
     FROM donations
+    WHERE amount_currency = ?
     ORDER BY amount_cents DESC, completed_at ASC
     LIMIT 8
   `,
     )
-    .all()
+    .all(currency)
 
-  return { totalCents, supporters, milestones, leaderboard }
+  return { totalCents, supporters, milestones, leaderboard, currency }
 }
 
 app.post(
@@ -94,17 +118,20 @@ app.post(
         )?.text?.value
         const donorName =
           customName?.trim().slice(0, 32) || 'Anonymous supporter'
+        const donationCurrency =
+          normalizeCurrency(session.currency) || supportedCurrencies[0]
         database
           .prepare(
             `
-        INSERT OR IGNORE INTO donations (stripe_session_id, donor_name, amount_cents, completed_at)
-        VALUES (?, ?, ?, ?)
+        INSERT OR IGNORE INTO donations (stripe_session_id, donor_name, amount_cents, amount_currency, completed_at)
+        VALUES (?, ?, ?, ?, ?)
       `,
           )
           .run(
             session.id,
             donorName,
             session.amount_total,
+            donationCurrency,
             new Date().toISOString(),
           )
       }
@@ -117,14 +144,22 @@ app.post(
 app.use(express.json())
 app.use(express.static('public'))
 
-app.get('/api/campaign', (_request, response) => {
-  response.json(campaignSnapshot())
+app.get('/api/campaign', (request, response) => {
+  const currency = normalizeCurrency(request.query.currency) || supportedCurrencies[0]
+  response.json(campaignSnapshot(currency))
 })
 
 app.post('/api/create-checkout-session', async (request, response) => {
   if (!stripe) {
     return response.status(503).json({
       error: 'Payments are not configured yet. Add STRIPE_SECRET_KEY to .env.',
+    })
+  }
+
+  const selectedCurrency = normalizeCurrency(request.body.currency)
+  if (!selectedCurrency) {
+    return response.status(400).json({
+      error: `Choose a supported currency: ${supportedCurrencies.join(', ').toUpperCase()}`,
     })
   }
 
@@ -136,7 +171,7 @@ app.post('/api/create-checkout-session', async (request, response) => {
   ) {
     return response
       .status(400)
-      .json({ error: 'Choose an amount between $1 and $1,000.' })
+        .json({ error: 'Choose an amount between 1 and 1,000.' })
   }
 
   const baseUrl =
@@ -158,7 +193,7 @@ app.post('/api/create-checkout-session', async (request, response) => {
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: selectedCurrency,
             product_data: { name: 'Keep Her Indoors contribution' },
             unit_amount: amountInCents,
           },

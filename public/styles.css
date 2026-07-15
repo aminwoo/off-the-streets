@@ -145,6 +145,22 @@ em {
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
+.currency-picker {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin: 0 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.currency-picker select {
+  border: 1px solid var(--ink);
+  background: #fffaf0;
+  color: var(--ink);
+  min-width: 112px;
+  padding: 7px 10px;
+}
 .amount {
   padding: 17px 14px;
   border: 1px solid var(--ink);
@@ -618,6 +634,10 @@ em {
     margin: 0 5px 22px 0;
     padding: 24px;
     box-shadow: 5px 5px 0 var(--ink);
+  }
+  .currency-picker {
+    margin-bottom: 12px;
+    font-size: 10px;
   }
   .scroll-prompt {
     font-size: 9px;
