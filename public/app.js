@@ -52,23 +52,8 @@ function currencyFromCountryCode(countryCode) {
   return mapped
 }
 
-function countryFromLocale(localeValue) {
-  if (!localeValue || typeof localeValue !== 'string') return null
-  const locale = localeValue.replace('_', '-')
-  const parts = locale.split('-')
-  if (parts.length < 2) return null
-  const region = parts[parts.length - 1]
-  return region.length === 2 ? region.toUpperCase() : null
-}
-
 async function detectCurrencyByCountry() {
-  const localeCandidates = [navigator.language, ...(navigator.languages || [])]
-  for (const locale of localeCandidates) {
-    const currencyCode = currencyFromCountryCode(countryFromLocale(locale))
-    if (currencyCode) return currencyCode
-  }
-
-  // Best-effort fallback using IP geolocation when locale has no country.
+  // Use geolocated country only; locale/language can be misleading.
   try {
     const response = await fetch('https://ipapi.co/json/', {
       cache: 'no-store',
