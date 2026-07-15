@@ -89,6 +89,27 @@ em {
   font-size: 15px;
   line-height: 1.7;
 }
+.hero-photo {
+  width: min(420px, 100%);
+  margin: 30px 0 0;
+  border: 1px solid var(--ink);
+  background: #fffaf0;
+  box-shadow: 9px 9px 0 color-mix(in srgb, var(--coral) 55%, transparent);
+}
+.hero-photo img {
+  width: 100%;
+  max-height: 420px;
+  display: block;
+  object-fit: cover;
+  border-bottom: 1px solid var(--ink);
+}
+.hero-photo figcaption {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .micro-stats {
   margin-top: 54px;
   max-width: 440px;
@@ -580,6 +601,13 @@ em {
   }
   .lede {
     font-size: 13px;
+  }
+  .hero-photo {
+    margin-top: 22px;
+    box-shadow: 5px 5px 0 color-mix(in srgb, var(--coral) 45%, transparent);
+  }
+  .hero-photo img {
+    max-height: 320px;
   }
   .micro-stats {
     margin-top: 34px;
