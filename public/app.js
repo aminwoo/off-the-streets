@@ -13,6 +13,73 @@ const leaderboardElement = document.querySelector('[data-leaderboard]')
 
 let selectedAmount = 20
 let selectedCurrency = currencySelect?.value || 'usd'
+const availableCurrencies = new Set(
+  Array.from(currencySelect?.options || []).map((option) => option.value),
+)
+
+const countryToCurrency = {
+  US: 'usd',
+  AU: 'aud',
+  CA: 'cad',
+  CN: 'cny',
+  GB: 'gbp',
+  IE: 'eur',
+  DE: 'eur',
+  FR: 'eur',
+  IT: 'eur',
+  ES: 'eur',
+  NL: 'eur',
+  BE: 'eur',
+  AT: 'eur',
+  PT: 'eur',
+  FI: 'eur',
+  GR: 'eur',
+  LU: 'eur',
+  LT: 'eur',
+  LV: 'eur',
+  EE: 'eur',
+  SK: 'eur',
+  SI: 'eur',
+  CY: 'eur',
+  MT: 'eur',
+  HR: 'eur',
+}
+
+function currencyFromCountryCode(countryCode) {
+  if (!countryCode) return null
+  const mapped = countryToCurrency[countryCode.toUpperCase()]
+  if (!mapped || !availableCurrencies.has(mapped)) return null
+  return mapped
+}
+
+function countryFromLocale(localeValue) {
+  if (!localeValue || typeof localeValue !== 'string') return null
+  const locale = localeValue.replace('_', '-')
+  const parts = locale.split('-')
+  if (parts.length < 2) return null
+  const region = parts[parts.length - 1]
+  return region.length === 2 ? region.toUpperCase() : null
+}
+
+async function detectCurrencyByCountry() {
+  const localeCandidates = [navigator.language, ...(navigator.languages || [])]
+  for (const locale of localeCandidates) {
+    const currencyCode = currencyFromCountryCode(countryFromLocale(locale))
+    if (currencyCode) return currencyCode
+  }
+
+  // Best-effort fallback using IP geolocation when locale has no country.
+  try {
+    const response = await fetch('https://ipapi.co/json/', {
+      cache: 'no-store',
+    })
+    if (!response.ok) return null
+    const payload = await response.json()
+    return currencyFromCountryCode(payload?.country_code)
+  } catch {
+    return null
+  }
+}
 
 function initEntranceAnimations() {
   const revealTargets = [
@@ -212,5 +279,15 @@ form.addEventListener('submit', async (event) => {
 
 if (window.lucide) window.lucide.createIcons()
 initEntranceAnimations()
-updateCurrencyUI()
-loadCampaign()
+
+async function initializePage() {
+  const detectedCurrency = await detectCurrencyByCountry()
+  if (detectedCurrency) {
+    selectedCurrency = detectedCurrency
+    currency = makeCurrencyFormatter(selectedCurrency)
+  }
+  updateCurrencyUI()
+  loadCampaign()
+}
+
+initializePage()
