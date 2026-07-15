@@ -230,6 +230,31 @@ em {
   background: transparent;
   color: var(--ink);
 }
+.donation-message {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 24px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.donation-message small {
+  font-size: inherit;
+  opacity: 0.65;
+}
+.donation-message textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid var(--ink);
+  background: #fffaf0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .amount-field input::-webkit-outer-spin-button,
 .amount-field input::-webkit-inner-spin-button {
   appearance: none;
@@ -460,6 +485,19 @@ em {
 }
 .supporter-name {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.supporter-info {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.supporter-message {
+  overflow: hidden;
+  color: rgba(21, 51, 49, 0.72);
+  font-size: 10px;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

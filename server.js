@@ -67,6 +67,7 @@ database.exec(`
   CREATE TABLE IF NOT EXISTS donations (
     stripe_session_id TEXT PRIMARY KEY,
     donor_name TEXT NOT NULL,
+    donor_message TEXT NOT NULL DEFAULT '',
     amount_cents INTEGER NOT NULL,
     amount_currency TEXT NOT NULL DEFAULT 'usd',
     completed_at TEXT NOT NULL
@@ -76,6 +77,16 @@ database.exec(`
 try {
   database.exec(
     "ALTER TABLE donations ADD COLUMN amount_currency TEXT NOT NULL DEFAULT 'usd'",
+  )
+} catch (error) {
+  if (!error?.message?.includes('duplicate column name')) {
+    throw error
+  }
+}
+
+try {
+  database.exec(
+    "ALTER TABLE donations ADD COLUMN donor_message TEXT NOT NULL DEFAULT ''",
   )
 } catch (error) {
   if (!error?.message?.includes('duplicate column name')) {
@@ -110,7 +121,7 @@ function campaignSnapshot(currency) {
   const leaderboard = database
     .prepare(
       `
-    SELECT donor_name AS name, amount_cents AS amountCents, amount_currency AS currency
+    SELECT donor_name AS name, donor_message AS message, amount_cents AS amountCents, amount_currency AS currency
     FROM donations
     WHERE amount_currency = ?
     ORDER BY amount_cents DESC, completed_at ASC
@@ -151,18 +162,20 @@ app.post(
         )?.text?.value
         const donorName =
           customName?.trim().slice(0, 32) || 'Anonymous supporter'
+        const donorMessage = session.metadata?.donation_message || ''
         const donationCurrency =
           normalizeCurrency(session.currency) || supportedCurrencies[0]
         database
           .prepare(
             `
-        INSERT OR IGNORE INTO donations (stripe_session_id, donor_name, amount_cents, amount_currency, completed_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO donations (stripe_session_id, donor_name, donor_message, amount_cents, amount_currency, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
       `,
           )
           .run(
             session.id,
             donorName,
+            donorMessage,
             session.amount_total,
             donationCurrency,
             new Date().toISOString(),
@@ -249,6 +262,11 @@ app.post('/api/create-checkout-session', async (request, response) => {
       .json({ error: 'Choose an amount between 1 and 1,000.' })
   }
 
+  const donationMessage =
+    typeof request.body.message === 'string'
+      ? request.body.message.trim().slice(0, 200)
+      : ''
+
   const baseUrl =
     process.env.BASE_URL || `${request.protocol}://${request.get('host')}`
 
@@ -265,6 +283,7 @@ app.post('/api/create-checkout-session', async (request, response) => {
           text: { maximum_length: 32, minimum_length: 1 },
         },
       ],
+      metadata: { donation_message: donationMessage },
       line_items: [
         {
           price_data: {

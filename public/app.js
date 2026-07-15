@@ -2,6 +2,7 @@ const form = document.querySelector('#donation-form')
 const amountInput = document.querySelector('#amount')
 const amountButtons = document.querySelectorAll('.amount')
 const currencySelect = document.querySelector('#currency')
+const messageInput = document.querySelector('#message')
 const currencySymbol = document.querySelector('#currency-symbol')
 const errorMessage = document.querySelector('#form-error')
 const totalElement = document.querySelector('[data-campaign-total]')
@@ -11,7 +12,7 @@ const markersElement = document.querySelector('[data-milestone-markers]')
 const milestoneCopy = document.querySelector('[data-milestone-copy]')
 const leaderboardElement = document.querySelector('[data-leaderboard]')
 
-let selectedAmount = 20
+let selectedAmount = 5
 let selectedCurrency = currencySelect?.value || 'usd'
 const availableCurrencies = new Set(
   Array.from(currencySelect?.options || []).map((option) => option.value),
@@ -100,6 +101,15 @@ function currencySymbolFor(currencyCode) {
   return parts.find((part) => part.type === 'currency')?.value || '$'
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
 function updateCurrencyUI() {
   if (currencySelect && currencySelect.value !== selectedCurrency) {
     currencySelect.value = selectedCurrency
@@ -162,7 +172,7 @@ function renderCampaign(campaign) {
     ? campaign.leaderboard
         .map(
           (supporter, index) =>
-            `<li><span class="rank">${String(index + 1).padStart(2, '0')}</span><span class="supporter-name">${supporter.name}</span><strong>${currency.format(supporter.amountCents / 100)}</strong></li>`,
+            `<li><span class="rank">${String(index + 1).padStart(2, '0')}</span><span class="supporter-info"><span class="supporter-name">${escapeHtml(supporter.name)}</span>${supporter.message ? `<span class="supporter-message">${escapeHtml(supporter.message)}</span>` : ''}</span><strong>${currency.format(supporter.amountCents / 100)}</strong></li>`,
         )
         .join('')
     : '<li class="empty-leaderboard">Be the first person to earn a place on the board.</li>'
@@ -215,7 +225,11 @@ form.addEventListener('submit', async (event) => {
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, currency: selectedCurrency }),
+      body: JSON.stringify({
+        amount,
+        currency: selectedCurrency,
+        message: messageInput.value.trim(),
+      }),
     })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error)
