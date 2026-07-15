@@ -121,13 +121,12 @@ em {
   background: #fffaf0;
   box-shadow: 9px 9px 0 color-mix(in srgb, var(--coral) 55%, transparent);
   animation: photo-float 6.5s ease-in-out infinite;
-  transform: translateY(-30px);
+  transform: translateY(-15px);
 }
 .hero-photo img {
   width: 100%;
-  max-height: 420px;
+  height: auto;
   display: block;
-  object-fit: cover;
   border-bottom: 1px solid var(--ink);
 }
 .hero-photo figcaption {
@@ -724,7 +723,7 @@ em {
     transform: translateY(-8px);
   }
   .hero-photo img {
-    max-height: 320px;
+    height: auto;
   }
   .micro-stats {
     margin-top: 34px;

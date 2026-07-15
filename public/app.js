@@ -37,7 +37,10 @@ function initEntranceAnimations() {
 
   elements.forEach((element, index) => {
     element.classList.add('reveal-on-scroll')
-    element.style.setProperty('--reveal-delay', `${Math.min(index * 36, 360)}ms`)
+    element.style.setProperty(
+      '--reveal-delay',
+      `${Math.min(index * 36, 360)}ms`,
+    )
   })
 
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
